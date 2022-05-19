@@ -207,6 +207,12 @@ FROM channel AS c
 JOIN tag AS t ON t.label = 'NOAA'
 WHERE c.label LIKE 'NOAA%';
 
+-- TODO: Marine Band (plus AIS)
+-- https://en.wikipedia.org/wiki/Marine_VHF_radio
+-- https://en.wikipedia.org/wiki/Automatic_identification_system#Technical_specification
+-- https://www.navcen.uscg.gov/?pageName=AISmain
+-- https://www.itu.int/rec/R-REC-M.2092
+
 -- National Calling Frequencies
 INSERT INTO channel (
   label,
