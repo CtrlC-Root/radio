@@ -168,6 +168,45 @@ FROM channel AS c
 JOIN tag AS t ON t.label = 'MURS'
 WHERE c.label LIKE 'MURS%';
 
+-- NOAA
+-- https://www.weather.gov/nwr/
+-- https://en.wikipedia.org/wiki/NOAA_Weather_Radio#Radio_frequencies_used
+
+-- XXX: 12.5 to 16 kHz bandwidth for NOAA channels
+-- Section 4.3.7 in https://www.ntia.doc.gov/files/ntia/publications/manual_sept_2009.pdf
+
+-- TODO: SAME codes
+-- https://www.weather.gov/NWR/counties
+-- https://www.weather.gov/nwr/nwrsame
+
+INSERT INTO channel (
+  label,
+  frequency_base_hz,
+  bandwidth_hz,
+  mode,
+  power_milliwatts
+)
+VALUES
+  ('NOAAW1', trunc(162.400 * 1000 * 1000), trunc(12.5 * 1000), 'NFM', 0),
+  ('NOAAW2', trunc(162.425 * 1000 * 1000), trunc(12.5 * 1000), 'NFM', 0),
+  ('NOAAW3', trunc(162.450 * 1000 * 1000), trunc(12.5 * 1000), 'NFM', 0),
+  ('NOAAW4', trunc(162.475 * 1000 * 1000), trunc(12.5 * 1000), 'NFM', 0),
+  ('NOAAW5', trunc(162.500 * 1000 * 1000), trunc(12.5 * 1000), 'NFM', 0),
+  ('NOAAW6', trunc(162.525 * 1000 * 1000), trunc(12.5 * 1000), 'NFM', 0),
+  ('NOAAW7', trunc(162.550 * 1000 * 1000), trunc(12.5 * 1000), 'NFM', 0)
+;
+
+INSERT INTO tag (label, notes)
+VALUES ('NOAA', 'United States, NOAA Weather Broadcast');
+
+INSERT INTO channel_tag (channel_id, tag_id)
+SELECT
+  c.rowid AS channel_id,
+  t.rowid AS tag_id
+FROM channel AS c
+JOIN tag AS t ON t.label = 'NOAA'
+WHERE c.label LIKE 'NOAA%';
+
 -- National Calling Frequencies
 INSERT INTO channel (
   label,
