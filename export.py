@@ -51,7 +51,7 @@ WHERE
 
 
 CHIRP_FIELDS = [
-    'Location',     # Channel #
+    'Location',     # Channel Number (1-based)
     'Name',
     'Frequency',    # MHz
     'Duplex',       # "", "+", "-", "split"
@@ -98,7 +98,7 @@ def main():
     cursor = connection.execute(SELECT_CHANNELS)
     for index, row in enumerate(cursor):
         record = {
-            'Location': str(index),
+            'Location': str(index + 1),
             'Name': row['label'],
             'Comment': row['notes'],
             'Frequency': hz_to_mhz(row['base_frequency_hz']),
