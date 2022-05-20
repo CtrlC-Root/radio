@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import csv
-import sqlite4
+import sqlite3
 import argparse
 from pathlib import Path
 
@@ -9,6 +9,7 @@ from pathlib import Path
 def load_database():
     channels_file_path = Path(__file__).parent / 'channels.sql'
     connection = sqlite3.connect(':memory:')
+    connection.row_factory = sqlite3.Row
 
     with connection:
         cursor = connection.cursor()
@@ -24,7 +25,7 @@ def hz_to_mhz(value):
 
 SELECT_CHANNELS = """
 SELECT
-    c.label AS name,
+    c.label AS label,
     c.notes AS notes,
 
     bf.center_hz AS          base_frequency_hz,
@@ -42,8 +43,32 @@ SELECT
     rf.squelch_ctcss_tone AS repeater_squelch_ctcss_tone
 FROM channel AS c
 INNER JOIN frequency AS bf ON c.base_frequency_id = bf.id
-LEFT JOIN frequency AS rf ON c.repeater_frequency_id = rf.id;
+LEFT JOIN frequency AS rf ON c.repeater_frequency_id = rf.id
+WHERE
+    base_frequency_hz >= (88 * 1000 * 1000) AND
+    base_frequency_hz <= (480 * 1000 * 1000);
 """
+
+
+CHIRP_FIELDS = [
+    'Location',     # Channel #
+    'Name',
+    'Frequency',    # MHz
+    'Duplex',       # "", "+", "-", "split"
+    'Offset',       # MHz Repeater Offset or Frequency
+    'Tone',         # "Tone", "TSQL", "DTCS", "Cross"
+    'rToneFreq',    # 110.9 (?)
+    'cToneFreq',    # 110.9 (?)
+    'DtcsCode',     # 023
+    'DtcsPolarity', # NN
+    'Mode',         # FM
+    'Comment'
+]
+
+CHIRP_MODES = {
+    'NFM': 'FM',
+    'FM': 'FM'
+}
 
 
 def main():
@@ -51,9 +76,9 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(
         '-o', '--output-file',
-        type=argparse.FileType('wb'),
+        type=argparse.FileType('w'),
         required=True,
-        help="CHIRP output file")
+        help="output file")
     
     args = parser.parse_args()
 
@@ -61,61 +86,44 @@ def main():
     connection = load_database()
 
     # open the output file
-    sink = csv.writer(args.output_file, delimiter=",", quotechar="|")
-    sink.writerow([
-        "Location",
-        "Name",
-        "Frequency",
-        "Duplex",
-        "Offset",
-        "Tone",
-        "rToneFreq",
-        "cToneFreq",
-        "DtcsCode",
-        "DtcsPolarity",
-        "Mode",
-        "Comment"
-    ])
+    sink = csv.DictWriter(
+        args.output_file,
+        fieldnames=CHIRP_FIELDS,
+        delimiter=",",
+        quotechar="\"")
+
+    sink.writeheader()
 
     # XXX
     cursor = connection.execute(SELECT_CHANNELS)
-    for row in cursor:
-        # assemble the new row
-        result = list([""] * 12)
-        result[0] = row[0]  # channel
-        result[1] = row[1]  # name
-        result[2] = row[2]  # frequency
-        result[10] = "FM"   # mode
-        result[11] = row[6] # comment
-    
-        # repeater frequency
-        if len(row[3]) > 0:
-            result[3] = "split"
-            result[4] = row[3]
-    
-        else:
-            result[4] = "0.0000"
-    
-        # calculate tone fields
-        result[6] = "88.5"
-        result[7] = "88.5"
-        result[8] = "023"
-        result[9] = "NN"
-    
-        if len(row[5]) > 0:
-            # XXX regular tones
-            if "PL" in row[5].upper():
-                result[5] = "TSQL" # Tone Tx/Rx
-                result[6] = row[5][:-2].strip() # Tone
-                result[7] = result[6] # Cross Tone
-    
-            # DCS tones
-            elif "DL" in row[5].upper():
-                result[5] = "DTCS" # DCS Tx/Rx
-                result[8] = row[5][:-2].strip() # DCS code
-                result[9] = "NN" # DCS polarity
-    
-        sink.writerow(result)
+    for index, row in enumerate(cursor):
+        record = {
+            'Location': str(index),
+            'Name': row['label'],
+            'Comment': row['notes'],
+            'Frequency': hz_to_mhz(row['base_frequency_hz']),
+            'Mode': CHIRP_MODES.get(row['base_modulation'], ''),
+            'Duplex': '',
+            'Offset': '0.0000'
+        }
+
+        if row['repeater_frequency_hz']:
+            if row['base_modulation'] != row['repeater_modulation']:
+                raise RuntimeError("Channel frequencies use different modulations")
+
+            if row['base_bandwidth_hz'] != row['repeater_bandwidth_hz']:
+                raise RuntimeError("Channel frequencies use different bandwidths")
+
+            record.update({
+                'Duplex': '+' if row['repeater_frequency_hz'] >= row['base_frequency_hz'] else '-',
+                'Offset': hz_to_mhz(row['repeater_frequency_hz'] - row['base_frequency_hz'])
+            })
+
+        sink.writerow(record)
 
     cursor.close()
     connection.close()
+
+
+if __name__ == '__main__':
+    main()
