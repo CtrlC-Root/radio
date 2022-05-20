@@ -62,13 +62,14 @@ CHIRP_FIELDS = [
     'DtcsCode',     # 023
     'DtcsPolarity', # NN
     'Mode',         # FM
-    'Comment'
+    'TStep',
+    'Skip',
+    'Comment',
+    'URCALL',
+    'RPT1CALL',
+    'RPT2CALL',
+    'DVCODE'
 ]
-
-CHIRP_MODES = {
-    'NFM': 'FM',
-    'FM': 'FM'
-}
 
 
 def main():
@@ -102,9 +103,14 @@ def main():
             'Name': row['label'],
             'Comment': row['notes'],
             'Frequency': hz_to_mhz(row['base_frequency_hz']),
-            'Mode': CHIRP_MODES.get(row['base_modulation'], ''),
+            'Mode': row['base_modulation'],
             'Duplex': '',
-            'Offset': '0.0000'
+            'Offset': '0.0',
+            'rToneFreq': '88.5',
+            'cToneFreq': '88.5',
+            'DtcsCode': '023',
+            'DtcsPolarity': 'NN',
+            'TStep': '5.0'
         }
 
         if row['repeater_frequency_hz']:
