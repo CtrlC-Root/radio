@@ -23,6 +23,10 @@ def hz_to_mhz(value):
     return round(float(value) / pow(10, 6), 4)
 
 
+def ctcss_tone_to_pl(value):
+    return round(float(value) / 10.0, 1)
+
+
 SELECT_CHANNELS = """
 SELECT
     c.label AS label,
@@ -57,8 +61,8 @@ CHIRP_FIELDS = [
     'Duplex',       # "", "+", "-", "split"
     'Offset',       # MHz Repeater Offset or Frequency
     'Tone',         # "Tone", "TSQL", "DTCS", "Cross"
-    'rToneFreq',    # 110.9 (?)
-    'cToneFreq',    # 110.9 (?)
+    'rToneFreq',    # 110.9 CTCSS Receive Tone for Squelch
+    'cToneFreq',    # 110.9 CTCSS Transmit Tone
     'DtcsCode',     # 023
     'DtcsPolarity', # NN
     'Mode',         # FM
@@ -80,7 +84,7 @@ def main():
         type=argparse.FileType('w'),
         required=True,
         help="output file")
-    
+
     args = parser.parse_args()
 
     # XXX
@@ -113,6 +117,13 @@ def main():
             'TStep': '5.0'
         }
 
+        if row['base_squelch_mode'] == 'CTCSS':
+            ctcss_tone = ctcss_tone_to_pl(row['base_squelch_ctcss_tone'])
+            record.update({
+                'Tone': 'TSQL',
+                'rToneFreq': ctcss_tone,
+                'cToneFreq': ctcss_tone})
+
         if row['repeater_frequency_hz']:
             if row['base_modulation'] != row['repeater_modulation']:
                 raise RuntimeError("Channel frequencies use different modulations")
@@ -124,6 +135,9 @@ def main():
                 'Duplex': '+' if row['repeater_frequency_hz'] >= row['base_frequency_hz'] else '-',
                 'Offset': hz_to_mhz(row['repeater_frequency_hz'] - row['base_frequency_hz'])
             })
+
+            if row['repeater_squelch_mode'] == 'CTCSS':
+                record['cToneFreq'] = ctcss_tone_to_pl(row['repeater_squelch_ctcss_tone'])
 
         sink.writerow(record)
 
