@@ -492,3 +492,8 @@ WHERE c.label IN (
   'W8CMH2',
   'W8AIC2'
 );
+
+-- TODO: columbus repeaters
+-- https://www.radioreference.com/db/browse/ctid/2064/ham
+-- https://www.repeaterbook.com/repeaters/location_search.php?state_id=39&type=city&loc=Columbus
+-- http://mcarcoh.org/ke8rv/index.html
