@@ -8,7 +8,15 @@ CREATE TABLE frequency (
   modulation TEXT NOT NULL,    -- AM, USB, LSB, FM, NFM, FM
   power_milliwatts INT NULL,   -- mW or NULL to disable transmitting
   squelch_mode TEXT NULL,      -- CTCSS, DCS
-  squelch_ctcss_tone INT NULL  -- 141.3 PL -> 1413
+  squelch_ctcss_tone INT NULL, -- 141.3 PL -> 1413
+
+  CHECK (modulation IN (
+    'CW',
+    'AM', 'LSB', 'USB',
+    'FM', 'NFM', 'WFM',
+    'DSTAR'
+  )),
+  CHECK (squelch_mode IN (NULL, 'CTCSS', 'DCS'))
 );
 
 CREATE TABLE channel (
@@ -34,7 +42,8 @@ CREATE TABLE channel_tag (
   tag_id INT NOT NULL,
 
   FOREIGN KEY (channel_id) REFERENCES channel(id),
-  FOREIGN KEY (tag_id) REFERENCES tag(id)
+  FOREIGN KEY (tag_id) REFERENCES tag(id),
+  UNIQUE (channel_id, tag_id)
 );
 
 -- FRS
@@ -400,3 +409,86 @@ SELECT
 FROM channel AS c
 JOIN tag AS t ON t.label = 'NATCALL'
 WHERE c.label LIKE 'HAC%';
+
+-- Central Ohio Radio Club
+-- http://www.corc.us/
+-- http://www.corc.us/CORC%20Repeater%20Info%20by%20Location-11-21-2020.pdf
+-- http://www.corc.us/CORC%20ALL%20Sites%207-2014.pdf
+INSERT INTO frequency (
+  id,
+  center_hz,
+  bandwidth_hz,
+  modulation,
+  power_milliwatts,
+  squelch_mode,
+  squelch_ctcss_tone -- 141.3 PL -> 1413
+)
+VALUES
+  -- W8RRJ 6M
+  (77, trunc(52.7000 * 1000 * 1000), trunc(11.25 * 1000), 'NFM', trunc(200 * 1000), NULL, NULL),
+  (78, trunc(52.9400 * 1000 * 1000), trunc(11.25 * 1000), 'NFM', trunc(200 * 1000), NULL, NULL),
+  (79, trunc(53.7000 * 1000 * 1000), trunc(11.25 * 1000), 'NFM', trunc(200 * 1000), NULL, NULL),
+  (80, trunc(51.7000 * 1000 * 1000), trunc(11.25 * 1000), 'NFM', trunc(200 * 1000), NULL, NULL),
+
+  -- W8CMH D-STAR
+  (81, trunc(145.490 * 1000 * 1000), trunc(11.25 * 1000), 'DSTAR', trunc(1500 * 1000), NULL, NULL),
+  (82, trunc(144.890 * 1000 * 1000), trunc(11.25 * 1000), 'DSTAR', trunc(1500 * 1000), NULL, NULL),
+
+  -- W8AIC 2M (123.0 PL)
+  (83, trunc(146.760 * 1000 * 1000), trunc(11.25 * 1000), 'NFM', trunc(1500 * 1000), 'CTCSS', 1230),
+  (84, trunc(146.160 * 1000 * 1000), trunc(11.25 * 1000), 'NFM', trunc(1500 * 1000), 'CTCSS', 1230),
+
+  -- W8RRJ 2M (123.0 PL)
+  (85, trunc(146.970 * 1000 * 1000), trunc(11.25 * 1000), 'NFM', trunc(1500 * 1000), 'CTCSS', 1230),
+  (86, trunc(146.370 * 1000 * 1000), trunc(11.25 * 1000), 'NFM', trunc(1500 * 1000), 'CTCSS', 1230),
+
+  -- W8NBA 2M (123.0 PL)
+  (87, trunc(147.330 * 1000 * 1000), trunc(11.25 * 1000), 'NFM', trunc(1500 * 1000), 'CTCSS', 1230),
+  (88, trunc(147.930 * 1000 * 1000), trunc(11.25 * 1000), 'NFM', trunc(1500 * 1000), 'CTCSS', 1230),
+
+  -- W8CMH D-STAR
+  (89, trunc(444.000 * 1000 * 1000), trunc(11.25 * 1000), 'DSTAR', trunc(1500 * 1000), NULL, NULL),
+  (90, trunc(449.000 * 1000 * 1000), trunc(11.25 * 1000), 'DSTAR', trunc(1500 * 1000), NULL, NULL),
+
+  -- W8AIC 70CM (151.4 PL)
+  (91, trunc(444.200 * 1000 * 1000), trunc(11.25 * 1000), 'NFM', trunc(1500 * 1000), 'CTCSS', 1514),
+  (92, trunc(449.200 * 1000 * 1000), trunc(11.25 * 1000), 'NFM', trunc(1500 * 1000), 'CTCSS', 1514)
+;
+
+INSERT INTO channel (
+  label,
+  base_frequency_id,
+  repeater_frequency_id
+)
+VALUES
+  ('W8RRJ1', 77, 78),
+  ('W8RRJ2', 77, 79),
+  ('W8RRJ3', 77, 80),
+  ('W8CMH1', 81, 82),
+  ('W8AIC1', 83, 84),
+  ('W8RRJ4', 85, 86),
+  ('W8NBA',  87, 88),
+  ('W8CMH2', 89, 90),
+  ('W8AIC2', 91, 92)
+;
+
+INSERT INTO tag (label, notes)
+VALUES ('CORC', 'United States, Ohio, Central Ohio Radio Club');
+
+INSERT INTO channel_tag (channel_id, tag_id)
+SELECT
+  c.rowid AS channel_id,
+  t.rowid AS tag_id
+FROM channel AS c
+JOIN tag AS t ON t.label = 'CORC'
+WHERE c.label IN (
+  'W8RRJ1',
+  'W8RRJ2',
+  'W8RRJ3',
+  'W8CMH1',
+  'W8AIC1',
+  'W8RRJ4',
+  'W8NBA',
+  'W8CMH2',
+  'W8AIC2'
+);
